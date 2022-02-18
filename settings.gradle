@@ -1,0 +1,2 @@
+rootProject.name = "MyPhotoViewTest"
+include ':app'
