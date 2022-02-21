@@ -21,14 +21,15 @@ public class MyPhotoView extends View {
     private Bitmap mBitmap;
     private Paint mPaint;
 
-    // 偏移值
+    // 偏移值 绘制bitmap时，
     private float mOriginalOffsetX;
     private float mOriginalOffsetY;
 
     // 小放大：放到后图片在屏幕内，一边等于屏幕，另一边留白
     private float mSmallScale;
+
     // 大放大：图片超过屏幕，一边等于屏幕，另一边超出屏幕
-    private float bigScale;
+    private float mBigScale;
 
     // 放大系数
     private float OVER_SCALE_FACTOR = 1.5f;
@@ -48,7 +49,7 @@ public class MyPhotoView extends View {
 
     private OverScroller mOverScroller;
 
-    // 双指操作
+    // 手势缩放
     private ScaleGestureDetector mScaleGestureDetector;
 
     // 是否缩放
@@ -100,18 +101,17 @@ public class MyPhotoView extends View {
             // 图片的宽度放大到和屏幕一样，高度也就会留白
             mSmallScale = (float) getWidth() / mBitmap.getWidth();
             // 图片的高度放大到和屏幕一样，宽度也就会超出屏幕了
-            bigScale = (float) getHeight() / mBitmap.getHeight() * OVER_SCALE_FACTOR;
+            mBigScale = (float) getHeight() / mBitmap.getHeight() * OVER_SCALE_FACTOR;
         } else {
             // 图片是纵向的
             // 图片的高度放大到和屏幕一样，宽度也就会留白
             mSmallScale = (float) getHeight() / mBitmap.getHeight();
             // 图片的宽度放大到和屏幕一样，高度也就会超出屏幕了
-            bigScale = (float) getWidth() / mBitmap.getWidth() * OVER_SCALE_FACTOR;
+            mBigScale = (float) getWidth() / mBitmap.getWidth() * OVER_SCALE_FACTOR;
         }
         // 当前的缩放比例 赋值
         mCurrentScale = mSmallScale;
     }
-
 
     @Override
     protected void onDraw(Canvas canvas) {
@@ -121,7 +121,7 @@ public class MyPhotoView extends View {
         // 在已经缩放的基础上，进行移动时，需要计算当前移动对应的距离是多少
         // 不同的缩放比例，对应的偏移不一样
         // 根据当前的缩放比例，重新计算偏移
-        float scaleFraction = (mCurrentScale - mSmallScale) / (bigScale - mSmallScale);
+        float scaleFraction = (mCurrentScale - mSmallScale) / (mBigScale - mSmallScale);
         // 移动的距离 x 放大的比例，就是真实的移动距离
         canvas.translate(mOffsetX * scaleFraction, mOffsetY * scaleFraction);
 
@@ -153,15 +153,15 @@ public class MyPhotoView extends View {
             isScale = false;
             mScaleAnimator.setFloatValues(mSmallScale, mCurrentScale);
         } else {
-            mScaleAnimator.setFloatValues(mSmallScale, bigScale);
+            mScaleAnimator.setFloatValues(mSmallScale, mBigScale);
         }
         return mScaleAnimator;
     }
 
-
     // 属性动画，通过反射调用该方法设置值
     public void setMCurrentScale(float mCurrentScale) {
         this.mCurrentScale = mCurrentScale;
+        invalidate();
     }
     public float getMCurrentScale() {
         return mCurrentScale;
@@ -170,11 +170,11 @@ public class MyPhotoView extends View {
     // 使偏移不能出现白边
     private void fixOffsets() {
         // 偏移是在一个区间内的
-        mOffsetX = Math.min(mOffsetX, (mBitmap.getWidth() * bigScale - getWidth())/2);
-        mOffsetX = Math.max(mOffsetX, -(mBitmap.getWidth() * bigScale - getWidth())/2);
+        mOffsetX = Math.min(mOffsetX, (mBitmap.getWidth() * mBigScale - getWidth())/2);
+        mOffsetX = Math.max(mOffsetX, -(mBitmap.getWidth() * mBigScale - getWidth())/2);
 
-        mOffsetY = Math.min(mOffsetY, (mBitmap.getHeight() * bigScale - getHeight())/2);
-        mOffsetY = Math.max(mOffsetY, -(mBitmap.getHeight() * bigScale - getHeight())/2);
+        mOffsetY = Math.min(mOffsetY, (mBitmap.getHeight() * mBigScale - getHeight())/2);
+        mOffsetY = Math.max(mOffsetY, -(mBitmap.getHeight() * mBigScale - getHeight())/2);
     }
 
     class PhotoGestureListener extends GestureDetector.SimpleOnGestureListener {
@@ -236,10 +236,10 @@ public class MyPhotoView extends View {
                         (int) mOffsetY,
                         (int) velocityX,
                         (int) velocityY,
-                        -(int)(mBitmap.getWidth() * bigScale - getWidth())/2,
-                        (int)(mBitmap.getWidth() * bigScale - getWidth())/2,
-                        -(int)(mBitmap.getHeight() * bigScale - getHeight())/2,
-                        (int)(mBitmap.getHeight() * bigScale - getHeight())/2,
+                        -(int)(mBitmap.getWidth() * mBigScale - getWidth())/2,
+                        (int)(mBitmap.getWidth() * mBigScale - getWidth())/2,
+                        -(int)(mBitmap.getHeight() * mBigScale - getHeight())/2,
+                        (int)(mBitmap.getHeight() * mBigScale - getHeight())/2,
                         600,
                         600
                 );
@@ -283,11 +283,9 @@ public class MyPhotoView extends View {
             Log.d(TAG, "onDoubleTap: ");
             isEnlarge = !isEnlarge;
             if (isEnlarge) {
-
-                mOffsetX = (e.getX() - getWidth()/2f) - (e.getX() - getWidth()/2f)*bigScale/mSmallScale;
-                mOffsetY = (e.getY() - getHeight()/2f) - (e.getY() - getHeight()/2f)*bigScale/mSmallScale;
+                mOffsetX = (e.getX() - getWidth()/2f) - (e.getX() - getWidth()/2f)*mBigScale/mSmallScale;
+                mOffsetY = (e.getY() - getHeight()/2f) - (e.getY() - getHeight()/2f)*mBigScale/mSmallScale;
                 fixOffsets();
-
                 getScaleAnimator().start();
             } else {
                 getScaleAnimator().reverse();
@@ -336,5 +334,4 @@ public class MyPhotoView extends View {
 
         }
     }
-
 }
